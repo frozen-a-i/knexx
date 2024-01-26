@@ -1,100 +1,61 @@
 const express = require("express");
-const router = express.Router();
-const knex = require("../database");
 const jwt = require("jsonwebtoken");
+
+const router = express.Router();
 const { authenticateToken } = require("../middleware/auth.js");
+const { createUser, getUser } = require("../database/queries/user.js");
 
-const posts = [
-  {
-    username: "anna",
-    title: "post 1",
-  },
-  {
-    username: "elsa",
-    title: "post 2",
-  },
-];
-
-//login jwt
-router.get("/posts", authenticateToken, (req, res) => {
-  res.json(posts.filter((post) => post.username === req.user.name));
-  console.log(req.user.name);
-});
-
-router.post("/login", (req, res) => {
-  //autenticate user
-  const { username } = req.body;
-  const user = { name: username };
-
-  // const ans=createUser(fullname,username, email);
-
-  const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET);
-  // res.json({ accessToken: accessToken })
-  res.json(ans);
-});
-
-router.post("/", async (req, res) => {
-  console.log(2);
+// ===========
+// create user
+// ===========
+router.post("/register", async (req, res) => {
   try {
-    //select
-    // const table1 = await knex("user");
-    // res.json(table1)
     const { fullname, username, email } = req.body;
     console.log(fullname, username, email);
-    const result = createUser(fullname, username, email);
-    res.json(result);
-    //insert
 
-    // await knex('user')
-    //     .insert({
-    //         fullName:'Ismoilova Anaxon',
-    //         userName: 'Frozenai',
-    //         email: 'ismoilova@example.com'
+    // validate request body
+    if (!(fullname && username && email)) {
+      return res.status(400).send({ message: "Insufficient data" });
+    }
 
-    //     })
-    // await knex('wallet')
-    //     .insert({
-    //         ID:1,
-    //         balance: 0,
-    //         currency: 0
+    // check if username exist
+    const username_already_exist = await getUser(username);
+    if (username_already_exist) {
+      return res.status(400).send({ message: "Username already exists" });
+    }
 
-    //     })
+    // create user
+    const result = await createUser(fullname, username, email);
+    res.status(201).json(result);
   } catch (error) {
-    throw error;
+    return res.status(500).send(error);
   }
 });
 
-// export async function getUser(email) {
-//     // const [rows] = await pool.query(`
-//     // SELECT * FROM users
-//     // WHERE email=?`, [email])
-
-//     // // return rows[0]
-//     // const result = knex(user)
-//     //     .join('wallet', 'user.ID', '=', 'wallet.id')
-//     //     console.log(json(result));
-//     // return json(result);
-// }
-async function createUser(fullname, usern, email) {
-  // const [rows] = await knex.pool.query(` SELECT * FROM user WHERE username=?`, [usern])
-  // console.log(rows);
-  const lst = await knex("user").select({ username: usern });
-  console.log(lst.length);
-  if (lst.length == 0) {
-    try {
-      const result = await knex("user").insert({
-        fullName: fullname,
-        userName: usern,
-        email: email,
-      });
-
-      return result;
-    } catch (error) {
-      console.log(error);
+// =============
+// sign-in user
+// =============
+router.post("/login", async (req, res) => {
+  try {
+    const { username } = req.body;
+    console.log(username);
+    // validate request body
+    if (!username) {
+      res.status(400).send({ message: "Username not provided" });
     }
-  } else {
-    console.log("Please write new username!!!");
+
+    // check if user exist
+    const user = await getUser(username);
+    console.log(user);
+    if (!user) {
+      res.status(400).send({ message: "User not found" });
+    }
+    // generate token
+    const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET || "secret", { expiresIn: "2h" });
+    res.status(200).send({ accessToken });
+  } catch (error) {
+    return res.status(500).send(error);
   }
-}
+});
 
 module.exports = { router };
