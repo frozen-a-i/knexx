@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 const { authenticateToken } = require("../middleware/auth.js");
-const { createUser, getUser, profile, addWallet,walletS, transfer, transfersHistory } = require("../database/queries/user.js");
+const { createUser, getUser, profile, addWallet, walletS, transfer, transfersHistory, invoice, getInvoice } = require("../database/queries/user.js");
 
 // ===========
 // create user
@@ -64,14 +64,14 @@ router.post("/login", async (req, res) => {
 //-------------//
 router.get("/login", authenticateToken, async (req, res) => {
     try {
-        const { username } = req.body;
 
         // validate request body
-        if (!username) {
+        if (!req.user) {
             res.status(400).send({ message: "Username not provided" });
         }
+        console.log(req.user.id)
 
-        const result = await profile(username);
+        const result = await profile(req.user.id);
         res.json(result);
 
     } catch (error) {
@@ -91,9 +91,9 @@ router.post('/addwallet', authenticateToken, async (req, res) => {
     if (!(username && name && balance && currency)) {
         return res.status(400).send({ message: "Insufficient data" });
     }
-    const cardnumber=Math.floor(Math.random()*1E16);
+    const cardnumber = Math.floor(Math.random() * 1E16);
 
-    const wallet = await addWallet(name, balance, currency, cardnumber);
+    const wallet = await addWallet(name, balance, currency, cardnumber, req.user.id);
     res.status(201).json(wallet);
 
 })
@@ -103,7 +103,7 @@ router.post('/addwallet', authenticateToken, async (req, res) => {
 //--------------------//
 
 router.post('/wallets', authenticateToken, async (req, res) => {
-    
+
     const { cardnumber } = req.body;
 
     const wallet = await walletS(cardnumber);
@@ -116,10 +116,15 @@ router.post('/wallets', authenticateToken, async (req, res) => {
 //------------------//
 
 router.post('/transfer', authenticateToken, async (req, res) => {
-    const { sender, reciever, amount } = req.body;
+    const { sender, reciever, amount, currency } = req.body;
 
-    const trans= await transfer(sender, reciever, amount);
+    const trans = await transfer(sender, reciever, amount);
+
     res.status(201).json(trans);
+    //invoice table
+
+    const inv = await invoice(sender, reciever, amount, currency);
+    res.status(202).json(inv);
 
 })
 
@@ -129,13 +134,24 @@ router.post('/transfer', authenticateToken, async (req, res) => {
 //---------------------//
 
 router.get('/transfer', authenticateToken, async (req, res) => {
-    const { cardnumber } = req.body;
 
-    const trans= await transfersHistory(cardnumber);
+
+    const user = await profile(req.user.id);
+    console.log(user[0].cardNumber);
+   
+    const trans = await transfersHistory(user[0].cardNumber);
     res.status(201).json(trans);
+
 
 })
 
+router.get('/invoice', authenticateToken, async(req,res)=>{
+
+    const user=await profile(req.user.id)
+
+    const inv= await getInvoice(user[0].cardNumber)
+    res.status(201).json(inv)
+})
 
 
 
