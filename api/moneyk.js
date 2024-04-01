@@ -34,7 +34,7 @@ router.post("/register", async (req, res) => {
 });
 
 // =============
-// sign-in user
+// sign-in user (bcryptjs)
 // =============
 router.post("/login", async (req, res) => {
     try {
@@ -62,7 +62,8 @@ router.post("/login", async (req, res) => {
 //-------------//
 //user profile //
 //-------------//
-router.get("/login", authenticateToken, async (req, res) => {
+
+router.get("/profile", authenticateToken, async (req, res) => {
     try {
 
         // validate request body
@@ -138,18 +139,18 @@ router.get('/transfer', authenticateToken, async (req, res) => {
 
     const user = await profile(req.user.id);
     console.log(user[0].cardNumber);
-   
+
     const trans = await transfersHistory(user[0].cardNumber);
     res.status(201).json(trans);
 
 
 })
 
-router.get('/invoice', authenticateToken, async(req,res)=>{
+router.get('/invoice', authenticateToken, async (req, res) => {
 
-    const user=await profile(req.user.id)
+    const user = await profile(req.user.id)
 
-    const inv= await getInvoice(user[0].cardNumber)
+    const inv = await getInvoice(user[0].cardNumber)
     res.status(201).json(inv)
 })
 

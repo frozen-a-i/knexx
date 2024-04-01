@@ -1,4 +1,4 @@
-const { from } = require("../../database");
+// const { from } = require("../../database");
 const { knex } = require("../knex");
 
 async function getUser(username) {
@@ -12,6 +12,12 @@ async function createUser(fullname, usern, email) {
     email: email,
   });
 }
+
+/// look up, try on, 
+
+const a=[1,2,3]
+const b=[1,2,3]
+console.log(a===b)
 
 async function profile(id) {
   return await knex('user').join('wallet', { 'user.id': 'wallet.user_id' });
@@ -31,9 +37,10 @@ async function addWallet(name, balance, currency, cardnumber, user_id) {
 
 async function transfer(sender, reciever, amount) {
 
-  const fromB = await knex('wallet').select('balance').where({ cardNumber: sender });
+  const fromBP = knex('wallet').select('balance').where({ cardNumber: sender });
+  const toBP = knex('wallet').select('balance').where({ cardNumber: reciever });
+  const [fromB, toB] = await Promise.all([fromBP, toBP])
 
-  const toB = await knex('wallet').select('balance').where({ cardNumber: reciever });
 
 
   //outgoing from sender
@@ -44,7 +51,6 @@ async function transfer(sender, reciever, amount) {
     cardnumber: sender,
     outgoing: amount
   });
-
 
   //incoming to receiver
 
